@@ -156,6 +156,7 @@ class ClientHandler extends Thread {
             String message;
             while ((message = in.readLine()) != null) {
                 if (message.length() > 200) {
+                    // Éviter à avoir un texte dépassant une ligne
                     out.println("Le message dépasse 200 caractères, merci de réduire la taille.");
                     continue;
                 }
