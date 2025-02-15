@@ -23,7 +23,7 @@ public class Server {
         Scanner scanner = new Scanner(System.in);
         String serverAddress = getValidatedServerIPAddress(scanner);
         int port = getValidatedServerPort(scanner);
-//        loginAuthentification();
+        loginAuthentification();
         startServer(serverAddress, port);
     }
 
