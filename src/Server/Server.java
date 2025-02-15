@@ -8,29 +8,31 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Server {
 
     private static ServerSocket server;
+    public static CopyOnWriteArrayList<ClientHandler> clients = new CopyOnWriteArrayList<ClientHandler>();
     private static final int MIN_PORT = 5000;
     private static final int MAX_PORT = 5050;
-    private static CopyOnWriteArrayList<ClientHandler> clients = new CopyOnWriteArrayList<ClientHandler>();
 
 
     public static void main(String[] args) throws Exception {
         Scanner scanner = new Scanner(System.in);
         String serverAddress = getValidatedServerIPAddress(scanner);
         int port = getValidatedServerPort(scanner);
-        loginAuthentification();
         startServer(serverAddress, port);
     }
 
     private static String getValidatedServerIPAddress(Scanner scanner) {
         String serverAddress;
         do {
-            System.out.print("Veuillez entrer l'adresse du server : ");
+            System.out.print("Veuillez configurer l'adresse du server : ");
             serverAddress = scanner.nextLine();
             if (!isValidIPAddress(serverAddress)) {
                 System.out.println("Format de l'adresse IP n'est pas valide. Assurez-vous que c'est bien 4 octects (ex: 192.168.1.1).");
@@ -42,7 +44,7 @@ public class Server {
     private static int getValidatedServerPort(Scanner scanner) {
         int port;
         while (true) {
-            System.out.print("Entrez le port (entre 5000 et 5050): ");
+            System.out.print("Veuillez choisir un port pour le server (entre 5000 et 5050): ");
             try {
                 port = Integer.parseInt(scanner.nextLine());
             } catch (NumberFormatException e) {
@@ -63,7 +65,7 @@ public class Server {
         InetAddress serverIP = InetAddress.getByName(serverAddress);
         server.bind(new InetSocketAddress(serverIP, port));
 
-        System.out.format("The server is running on %s:%d%n", serverAddress, port);
+        System.out.format("Le serveur roule sur %s:%d%n", serverAddress, port);
 
         int clientNumber = 0;
         try {
@@ -74,8 +76,7 @@ public class Server {
                 clientHandler.start();
                 System.out.println("New connection with client#" + clientNumber + " at" + clientSocket);
             }
-        }
-        finally {
+        } finally {
             server.close();
         }
     }
@@ -121,18 +122,49 @@ class ClientHandler extends Thread {
             in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 
             out.println("Hello from server - you are client#" + clientNumber);
+            out.println("Veuillez entrer votre nom d'utilisateur:");
 
-            out.println("Please enter your username:");
             String username = in.readLine();
-            verifyUsername(username);
-            out.println("Please enter your password:");
+            if (username == null || username.isBlank()) {
+                out.println("Nom d'utilisateur invalide");
+                clientSocket.close();
+                return;
+            }
+            out.println("Veuillez entrer votre mot de passe");
             String password = in.readLine();
-            verifyPassword(password);
+            if (password == null || password.isBlank()) {
+                out.println("Erreur dans la saisie du mot de passe");
+                clientSocket.close();
+                return;
+            }
+
+            if (UserStorage.userExists(username)) {
+                if (!UserStorage.validateUser(username, password)) {
+                    out.println("Erreur dans la saisie du mot de passe");
+                    clientSocket.close();
+                    return;
+                }
+            } else {
+                UserStorage.saveUser(username, password);
+            }
+
+            List<String> lastMessages = MessageStorage.loadLastMessages();
+            for (String msg : lastMessages) {
+                out.println(msg);
+            }
 
             String message;
             while ((message = in.readLine()) != null) {
-                System.out.println(username + ": " + message);
-                broadcastToAll(username + ": " + message);
+                if (message.length() > 200) {
+                    out.println("Le message dépasse 200 caractères, merci de réduire la taille.");
+                    continue;
+                }
+                String timestamp = new SimpleDateFormat("yyyy-MM-dd@HH:mm:ss").format(new Date());
+                String clientInfo = clientSocket.getInetAddress().getHostAddress() + ":" + clientSocket.getPort();
+                String formattedMessage = String.format("[%s - %s - %s]: %s", username, clientInfo, timestamp, message);
+                System.out.println(formattedMessage);
+                MessageStorage.saveMessage(formattedMessage);
+                broadcastToAll(formattedMessage);
             }
 
 
@@ -143,32 +175,20 @@ class ClientHandler extends Thread {
                 clientSocket.close();
                 in.close();
                 out.close();
-//                Server.clients.remove(this);
             } catch (IOException e) {
-                System.out.println("Couldn't close a socket, what's going on?");
+                System.out.println("ERREUR: Le socket n'a pas pu être fermé correctentment?");
             }
             System.out.println("Connection with client# " + clientNumber + " closed");
         }
     }
 
-    private void verifyPassword(String password) {
-        if (password.length() < 4) {
-            out.println("INVALID_PASSWORD");
-        }
-    }
-
-    private void verifyUsername(String username) {
-        if (username.isBlank()) {
-            out.println("INVALID_USERNAME");
-        }
-    }
 
     public void broadcastToAll(String message) {
-//        for (ClientHandler client : Server.clients) {
-//            if (client != this) {
-//                client.sendMessage(message);
-//            }
-//        }
+        for (ClientHandler client : Server.clients) {
+            if (client != this) {
+                client.sendMessage(message);
+            }
+        }
     }
 
     public synchronized void sendMessage(String message) {

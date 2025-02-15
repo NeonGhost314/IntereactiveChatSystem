@@ -1,7 +1,11 @@
 package Server;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -49,17 +53,17 @@ public class UserStorage {
      * Vérifie le mot de passe d'un utilisateur existant est correct
      * @param username le nom de l'utilisateur
      * @param password  le mot de passe de l'utilisateur
-     * @return
+     * @return vrai si l'utilisateur a le bon mot de passe
      */
     public static boolean validateUser(String username, String password) {
         Map<String, String> users = loadUsers();
-        return userExists(username) && users.get(username).equals(password)? true: false;
+        return users.containsKey(username) && users.get(username).equals(password)? true: false;
     }
 
     /**
      * Vérifie si l'utilisateur existe dans la base de données locale
      * @param username
-     * @return
+     * @return vrai si l'utilsateur existe
      */
     public static boolean userExists(String username) {
         return loadUsers().containsKey(username);
