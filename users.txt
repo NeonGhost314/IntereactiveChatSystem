@@ -1,0 +1,6 @@
+salut,salut
+bonsoir,bonsoir
+slim,123
+gape,gape
+ghsli,ghsli
+bonsoi,salut

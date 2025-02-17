@@ -57,7 +57,7 @@ public class UserStorage {
      */
     public static boolean validateUser(String username, String password) {
         Map<String, String> users = loadUsers();
-        return users.containsKey(username) && users.get(username).equals(password)? true: false;
+        return users.containsKey(username) && users.get(username).equals(password) ;
     }
 
     /**

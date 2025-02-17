@@ -8,7 +8,7 @@ import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MessageStorage {
+    public class MessageStorage {
     private static final String FILE_PATH = "messages.txt";
     private static final int MAX_MESSAGES = 15;
 
@@ -16,7 +16,6 @@ public class MessageStorage {
     /**
      * Sauvegarder un message dans la base de donnees local
      *
-     * @param username le nom de l'utilisateur
      * @param message  le message de l'utilisateur
      */
     public static void saveMessage(String message) {

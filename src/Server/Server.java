@@ -25,8 +25,16 @@ public class Server {
     public static void main(String[] args) throws Exception {
         Scanner scanner = new Scanner(System.in);
         String serverAddress = getValidatedServerIPAddress(scanner);
-        int port = getValidatedServerPort(scanner);
-        startServer(serverAddress, port);
+        int port;
+        while  ( true )  {
+            try {
+                port = getValidatedServerPort(scanner);
+                startServer(serverAddress, port);
+                break;
+            } catch (Exception e) {
+                System.out.println("port invalide, essayez un autre");
+            }
+        }
     }
 
     private static String getValidatedServerIPAddress(Scanner scanner) {
@@ -121,33 +129,37 @@ class ClientHandler extends Thread {
             out = new PrintWriter(clientSocket.getOutputStream(), true);
             in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
 
-            out.println("Hello from server - you are client#" + clientNumber);
-            out.println("Veuillez entrer votre nom d'utilisateur:");
-
-            String username = in.readLine();
-            if (username == null || username.isBlank()) {
-                out.println("Nom d'utilisateur invalide");
-                clientSocket.close();
-                return;
-            }
-            out.println("Veuillez entrer votre mot de passe");
-            String password = in.readLine();
-            if (password == null || password.isBlank()) {
-                out.println("Erreur dans la saisie du mot de passe");
-                clientSocket.close();
-                return;
-            }
-
-            if (UserStorage.userExists(username)) {
-                if (!UserStorage.validateUser(username, password)) {
-                    out.println("Erreur dans la saisie du mot de passe");
-                    clientSocket.close();
-                    return;
+            out.println("Connection avec le numero de client :" + clientNumber + ", tappez exit a tout moment pour vous deconnecter.");
+            boolean connexion = false;
+            String username = "";
+            while (!connexion) {
+                out.println("Entrez votre username");
+                username = in.readLine();
+                while (username == null || username.isBlank()) {
+                    out.println("Nom d'utilisateur invalide,ressayer");
+                    username = in.readLine();
                 }
-            } else {
-                UserStorage.saveUser(username, password);
-            }
+                out.println("Veuillez entrer votre mot de passe");
+                String password = in.readLine();
+                while (password == null || password.isBlank()) {
+                    out.println("Erreur dans la saisie du mot de passe, reessayer");
+                    password = in.readLine();
+                }
 
+                if (UserStorage.userExists(username)) {
+                    if (!UserStorage.validateUser(username, password)) {
+                        out.println("Mot de passe invalide, reessayez de vous connecter");
+                    }
+                    else {
+                        connexion = true;
+                    }
+                } else {
+                    UserStorage.saveUser(username, password);
+                    connexion = true;
+                }
+            }
+            out.println("Connexion reussie ");
+            out.println("Derniers messages : ");
             List<String> lastMessages = MessageStorage.loadLastMessages();
             for (String msg : lastMessages) {
                 out.println(msg);
@@ -155,17 +167,14 @@ class ClientHandler extends Thread {
 
             String message;
             while ((message = in.readLine()) != null) {
-                if (message.length() > 200) {
-                    // Éviter à avoir un texte dépassant une ligne
-                    out.println("Le message dépasse 200 caractères, merci de réduire la taille.");
-                    continue;
-                }
+
                 String timestamp = new SimpleDateFormat("yyyy-MM-dd@HH:mm:ss").format(new Date());
                 String clientInfo = clientSocket.getInetAddress().getHostAddress() + ":" + clientSocket.getPort();
                 String formattedMessage = String.format("[%s - %s - %s]: %s", username, clientInfo, timestamp, message);
                 System.out.println(formattedMessage);
                 MessageStorage.saveMessage(formattedMessage);
                 broadcastToAll(formattedMessage);
+
             }
 
 
@@ -196,5 +205,4 @@ class ClientHandler extends Thread {
         out.println(message);
     }
 }
-
 
